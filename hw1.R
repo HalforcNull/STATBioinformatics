@@ -1,10 +1,28 @@
+library(plotly)
+
+
 data <- read.csv('GSE37704.csv')
 lowCount <- NULL
 constantRead <- NULL
 result <- NULL
 
-
+rowMean <- rowMeans(data[2:7])
 summary(rowMeans(data[2:7]))
+
+plot_ly(x=rowMean, type='histogram')
+# from the graph we see a lot 'low count' genes 
+filterD <- data[mean(as.numeric(data[i, 2:7])) > 250]
+
+
+
+
+
+
+
+
+
+
+
 
 
 

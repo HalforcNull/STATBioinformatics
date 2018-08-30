@@ -1,0 +1,134 @@
+---
+title: "Bioinfo HW1 - Group"
+date: "August 28, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Library Setup
+```{r include=FALSE}
+library(plotly)
+library(dplyr)
+```
+
+# Import Data
+```{r}
+data <- read.csv('GSE37704.csv')
+```
+
+
+# Exploring Raw Data - box plot
+```{r}
+l.data <- log(data[,-1] + 1)
+boxplot(l.data, col = c(rep(2,3),rep(3,3)), main="Boxplot of log of dataset")
+```
+
+# U test, Wilcoxon signed test
+
+```{r, warning=FALSE}
+lowCount <- NULL
+constantRead <- NULL
+result <- NULL
+Sign <- NULL
+MW_U <- NULL
+for(i in 1:nrow(l.data)){
+  ctrl <- as.numeric( l.data[i, 1:3] )
+  exp <- as.numeric( l.data[i, 4:6] )
+  if( var(ctrl) == 0 ||
+      var(exp) == 0){
+    #variance of both group are 0, cannot use T test 
+    constantRead <- c(constantRead, i)
+    result<-c(result, NA)
+    MW_U[i] <- NA
+    Sign[i] <- NA
+    next
+  }
+  S <- wilcox.test(ctrl, exp)
+  MW <- wilcox.test(ctrl, exp,correct = F)
+  Sign[i] <-  S$p.value
+  MW_U[i] <- MW$p.value
+}
+
+a <- which.min(Sign)
+b <- which.min(MW_U)
+l.data[a,]
+l.data[b,]
+
+```
+
+# Pre-process Raw Data
+
+```{r}
+rowMean <- rowMeans(data[2:7])
+summary(rowMean)
+plot_ly(x=rowMean, type='histogram')
+```
+
+By playing with this graph, we can see a lot 'low count' genes. 
+They need to be filtered out.
+
+
+```{r}
+df <- data[rowMean > 1200,]
+plot_ly(x=rowMeans(df[,-1]), type='histogram')
+
+
+for(i in 1:nrow(df)){
+  ctrl <- as.numeric( df[i,2:4] )
+  exp <- as.numeric( df[i,5:7] )
+  S <- wilcox.test(ctrl, exp)
+  MW <- wilcox.test(ctrl, exp,correct = F)
+  Sign[i] <-  S$p.value
+  MW_U[i] <- MW$p.value
+}
+
+a <- which.min(Sign)
+b <- which.min(MW_U)
+l.data[a,]
+l.data[b,]
+
+
+
+
+```
+
+
+#
+
+
+# PCA
+PCA 
+
+```{r}
+
+rownames(df) <- df$ensgene
+df <- df[,-1]
+
+
+pcaResult <- princomp(df)
+plot(pcaResult, type = 'l')
+
+
+pcaHC <- hclust(dist(pcaResult$scores), method='ward.D2')
+plot(pcaHC)
+geneCluster <- cutree(pcaHC, k=3)
+
+geneDf.Temp <- data.frame(pcaResult$scores, cluster = factor(geneCluster))
+geneDf <- transform(geneDf.Temp, cluster_name = paste('Cluster', geneCluster) )
+# 
+# plot_ly(geneDf,
+#         x = geneDf$Comp.1,
+#         y = geneDf$Comp.2,
+#         mode = "markers", 
+#         text = rownames(df),
+#         color = geneDf$cluster_name, marker = list(size = 2)) 
+#  
+# p <- layout(p, title = "PCA Result", 
+#        xaxis = list(title = "PC 1"),
+#        yaxis = list(title = "PC 2"))
+# 
+# p
+```
