@@ -1,0 +1,141 @@
+---
+title: "Hw2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source("https://bioconductor.org/biocLite.R")
+biocLite("DESeq2")
+library(DESeq2)
+
+```
+
+
+# 1. Load Data
+```{r}
+data <- read.csv('GSE37704.csv')
+rownames(data) <- data[,1]
+data <- data[,-1]
+```
+
+
+# 2. Preprocess Data
+
+## 2.1 Normalize Data by count per million
+```{r}
+normData <- lapply(data, function(x){return(x/sum(x) * 1000000)})
+df <- as.data.frame(normData, row.names = rownames(data), col.names = names(normData))
+summary.data.frame(df)
+```
+
+## 2.2 Log normalized data
+```{r}
+logDf <- log(df+1)
+summary.data.frame(logDf)
+```
+
+
+## 2.3 cut data by 
+
+
+
+
+
+
+
+
+# 3 Follow Deseq 2 Manual
+```{r}
+
+colna <- colnames(data)
+coldata <- as.data.frame(c('control','control','control','Hoxa1KN','Hoxa1KN','Hoxa1KN'))
+colnames(coldata) <- c('condition')
+rownames(coldata) <- colna
+
+head(coldata)
+
+
+head(data)
+
+dds <- DESeq2::DESeqDataSetFromMatrix(countData = as.matrix(data), colData = coldata, design = ~ condition )
+
+
+dds
+
+
+dds <- DESeq2::DESeq(dds)
+res <- DESeq2::results(dds)
+res
+
+summary(res)
+res05 <- DESeq2::results(dds, alpha=0.05)
+summary(res05)
+
+```
+
+```{r}
+biocLite("apeglm")
+DESeq2::resultsNames(dds)
+resLFC <- DESeq2::lfcShrink(dds, coef="condition_Hoxa1KN_vs_control", type="apeglm")
+resLFC1 <- DESeq2::lfcShrink(dds, coef="condition_Hoxa1KN_vs_control", type="apeglm", res=res)
+resLFC5 <- DESeq2::lfcShrink(dds, coef="condition_Hoxa1KN_vs_control", type="apeglm", res=res05)
+
+DESeq2::summary.DESeqResults(resLFC)
+DESeq2::summary.DESeqResults(resLFC1)
+DESeq2::summary.DESeqResults(resLFC5)
+DESeq2::summary.DESeqResults(res05)
+
+
+DESeq2::plotMA(res, ylim=c(-5,5))
+DESeq2::plotMA(resLFC, ylim=c(-5,5))
+
+
+DESeq2::plotCounts(dds, gene=which.max(abs(res05$log2FoldChange)), intgroup="condition")
+
+```
+
+
+## get top increased genes and top decreased genes (alpha = 0.05)
+
+```{r}
+res05inc <- subset(res05, log2FoldChange > 0)
+res05decs <- subset(res05, log2FoldChange < 0)
+summary(res05inc)
+summary(res05decs)
+
+
+# sort
+res05incOrdered <- res05inc[order(-res05inc$log2FoldChange),]
+res05decsOrdered <- res05decs[order(res05decs$log2FoldChange),]
+
+
+summary(res05incOrdered)
+summary(res05decsOrdered)
+res05incOrdered$log2FoldChange[1:50]
+res05decsOrdered$log2FoldChange[1:50]
+
+res05incOrdered[1:50,]
+
+```
+
+# Enrichment
+## Convert Ensembl Id into Go Id (or name)
+
+```{r}
+source("http://bioconductor.org/biocLite.R")
+biocLite("biomaRt")
+library(biomaRt)
+listEnsembl(GRCh=38)
+listEnsembl(GRCh=37)
+
+if(!file.exists('EG2GO.RDS')){
+  grch37 = useEnsembl(biomart="ensembl", dataset = "hsapiens_gene_ensembl")
+  head(listFilters(grch37))
+  EG2GO <- getBM(mart=grch37, attributes=c('ensembl_gene_id','go_id'))
+  saveRDS(EG2GO, file='EG2GO.RDS')
+}else{
+  EG2GO <- readRDS('EG2GO.RDS')
+}
+
+```
