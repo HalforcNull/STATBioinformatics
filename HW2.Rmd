@@ -40,19 +40,28 @@ summary.data.frame(logDf)
 ```
 
 
-## 2.3 cut data by 
+## 2.3 cut data
+```{r}
+s <- logDf %>%
+  dplyr::add_rownames() %>%
+  dplyr::filter( (control_1 > 1) & (control_2 > 1) & (control_3 > 1) 
+         & (Hoxa1KN_1 > 1) & (Hoxa1KN_2 > 1) & (Hoxa1KN_3 > 1)) %>%
+  dplyr::select(rowname)
+cuttedData <- data %>%
+  dplyr::add_rownames() %>%
+  dplyr::inner_join(s, by='rowname') 
+cuttedData <- as.data.frame(cuttedData)
+rownames(cuttedData) <- cuttedData[,1]
+cuttedData <- cuttedData[,-1]
 
-
-
-
-
+```
 
 
 
 # 3 Follow Deseq 2 Manual
 ```{r}
 
-colna <- colnames(data)
+colna <- colnames(cuttedData)
 coldata <- as.data.frame(c('control','control','control','Hoxa1KN','Hoxa1KN','Hoxa1KN'))
 colnames(coldata) <- c('condition')
 rownames(coldata) <- colna
@@ -60,9 +69,9 @@ rownames(coldata) <- colna
 head(coldata)
 
 
-head(data)
+head(cuttedData)
 
-dds <- DESeq2::DESeqDataSetFromMatrix(countData = as.matrix(data), colData = coldata, design = ~ condition )
+dds <- DESeq2::DESeqDataSetFromMatrix(countData = as.matrix(cuttedData), colData = coldata, design = ~ condition )
 
 
 dds
@@ -208,7 +217,7 @@ upGeneList[1:10]
 downGeneList[1:10]
 
 # Here we can go http://www.pantherdb.org/
-# writeClipboard(rownames(upgradeGenes))
+# writeClipboard(rownames(upGeneList))
 # writeClipboard(rownames(downGeneList))
 # writeClipboard(rownames(upgradeGenes)[1:10])
 
