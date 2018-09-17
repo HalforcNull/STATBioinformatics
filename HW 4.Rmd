@@ -1,0 +1,271 @@
+---
+title: "Hw 4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DESeq2)
+library(dplyr)
+library(apeglm)
+library(vsn)
+library(pheatmap)
+library(RColorBrewer)
+library(topGO)
+library(biomaRt)
+```
+
+
+# 1. Load Data
+```{r}
+data <- read.csv('GSE37704.csv')
+rownames(data) <- data[,1]
+data <- data[,-1]
+```
+
+
+# 2. Preprocess Data
+
+## 2.1 Normalize Data by count per million
+```{r}
+normData <- lapply(data, function(x){return(x/sum(x) * 1000000)})
+df <- as.data.frame(normData, row.names = rownames(data), col.names = names(normData))
+summary.data.frame(df)
+```
+
+## 2.2 Log normalized data
+```{r}
+logDf <- log(df+1)
+summary.data.frame(logDf)
+```
+
+
+## 2.3 cut data
+```{r}
+s <- df %>%
+  dplyr::add_rownames() %>%
+  dplyr::filter( (control_1 >= 5) | (control_2 >= 5) | (control_3 >= 5) 
+         | (Hoxa1KN_1 >= 5) | (Hoxa1KN_2 >= 5) | (Hoxa1KN_3 >= 5)) %>%
+  dplyr::select(rowname)
+cuttedData <- data %>%
+  dplyr::add_rownames() %>%
+  dplyr::inner_join(s, by='rowname') 
+cuttedData <- as.data.frame(cuttedData)
+rownames(cuttedData) <- cuttedData[,1]
+cuttedData <- cuttedData[,-1]
+print("")
+nrow(cuttedData)
+summary(cuttedData)
+
+```
+
+
+
+# 3 Follow Deseq 2 Manual
+```{r}
+
+colna <- colnames(cuttedData)
+coldata <- as.data.frame(c('control','control','control','Hoxa1KN','Hoxa1KN','Hoxa1KN'))
+colnames(coldata) <- c('condition')
+rownames(coldata) <- colna
+
+head(coldata)
+
+
+head(cuttedData)
+
+dds <- DESeq2::DESeqDataSetFromMatrix(countData = as.matrix(cuttedData), colData = coldata, design = ~ condition )
+
+
+dds
+
+
+dds <- DESeq2::DESeq(dds)
+res <- DESeq2::results(dds)
+res
+
+summary(res)
+res05 <- DESeq2::results(dds, alpha=0.05)
+summary(res05)
+
+```
+
+```{r}
+DESeq2::resultsNames(dds)
+resLFC <- DESeq2::lfcShrink(dds, coef="condition_Hoxa1KN_vs_control", type="apeglm")
+resLFC1 <- DESeq2::lfcShrink(dds, coef="condition_Hoxa1KN_vs_control", type="apeglm", res=res)
+resLFC5 <- DESeq2::lfcShrink(dds, coef="condition_Hoxa1KN_vs_control", type="apeglm", res=res05)
+
+DESeq2::summary.DESeqResults(resLFC)
+DESeq2::summary.DESeqResults(resLFC1)
+DESeq2::summary.DESeqResults(resLFC5)
+DESeq2::summary.DESeqResults(res05)
+
+
+DESeq2::plotMA(res, ylim=c(-5,5))
+DESeq2::plotMA(resLFC, ylim=c(-5,5))
+
+DESeq2::plotCounts(dds, gene=which.max(abs(res05$log2FoldChange[which(res05$padj<0.05)])), intgroup="condition")
+DESeq2::plotCounts(dds, gene=which.max(abs(res$log2FoldChange[which(res$padj<0.05)])), intgroup="condition")
+DESeq2::plotCounts(dds, gene=which.max(abs(resLFC$log2FoldChange[which(resLFC$padj<0.05)])), intgroup="condition")
+
+
+DESeq2::plotCounts(dds, gene=which.max(abs(res05$log2FoldChange)), intgroup="condition")
+
+ntd <- normTransform(dds)
+vsn::meanSdPlot(assay(ntd))
+
+select <- order(rowMeans(counts(dds,normalized=TRUE)),
+                decreasing=TRUE)[1:20]
+select2 <- order(abs(resLFC$log2FoldChange[which(resLFC$padj<0.05)]),
+                decreasing=TRUE)[1:200]
+
+select_diff <- assay(ntd)[select2,]-rowMeans(assay(ntd)[select2,])
+
+select3 <- order(rowMeans(select_diff[,1:3]), decreasing = TRUE)
+#df <- as.data.frame(colData(dds)[,c("condition","type")])
+index <- select2[select3]
+mySd <- sd( assay(ntd)[index,]-rowMeans(assay(ntd)[index,]) )
+pheatmap(( assay(ntd)[index,]-rowMeans(assay(ntd)[index,]) )/mySd, cluster_rows=FALSE, show_rownames=FALSE,
+         cluster_cols=FALSE)
+
+
+
+vsd <- vst(dds, blind=FALSE)
+vsn::meanSdPlot(assay(vsd))
+rld <- rlog(dds, blind=FALSE)
+head(assay(vsd), 3)
+pheatmap(assay(vsd)[select2,], cluster_rows=FALSE, show_rownames=TRUE,
+         cluster_cols=FALSE)
+
+sampleDists <- dist(t(assay(vsd)))
+
+sampleDistMatrix <- as.matrix(sampleDists)
+rownames(sampleDistMatrix) <- paste(vsd$condition, sep="-")
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,
+         col=colors)
+
+plotPCA(vsd, intgroup=c("condition"))
+
+se <- SummarizedExperiment(log2(counts(dds, normalized=TRUE) + 1),
+                           colData=colData(dds))
+
+plotPCA( DESeqTransform( se ) )
+
+plot(res$log2FoldChange,-log10(res$padj)) #Volcano plot. Not sure what this shows
+```
+
+
+## get top increased genes and top decreased genes (alpha = 0.05)
+
+```{r}
+res05inc <- subset(res05, log2FoldChange > 1)
+res05decs <- subset(res05, log2FoldChange < -1)
+summary(res05inc)
+summary(res05decs)
+
+
+# sort
+res05incOrdered <- res05inc[order(-res05inc$log2FoldChange),]
+res05decsOrdered <- res05decs[order(res05decs$log2FoldChange),]
+
+
+summary(res05incOrdered)
+summary(res05decsOrdered)
+res05incOrdered$log2FoldChange[1:50]
+res05decsOrdered$log2FoldChange[1:50]
+
+res05incOrdered[1:50,]
+
+```
+
+# Enrichment
+## Load Ensmbl to Go_id table
+```{r}
+
+listEnsembl(GRCh=38)
+listEnsembl(GRCh=37)
+
+if(!file.exists('EG2GO.RDS')){
+  grch37 = useEnsembl(biomart="ensembl", dataset = "hsapiens_gene_ensembl")
+  head(listFilters(grch37))
+  EG2GO <- getBM(mart=grch37, attributes=c('ensembl_gene_id','go_id'))
+  saveRDS(EG2GO, file='EG2GO.RDS')
+}else{
+  EG2GO <- readRDS('EG2GO.RDS')
+}
+
+```
+
+## Filter Genes
+
+```{r}
+upgradeGenes <- res05incOrdered[res05incOrdered$log2FoldChange > 2, ]
+downgradeGenes <- res05decsOrdered[res05decsOrdered$log2FoldChange < -2, ]
+
+cat('Increased (at least increased to twice) gene count: ')
+nrow(upgradeGenes)
+
+cat('Decreased (at least reduced to half) gene count: ')
+nrow(downgradeGenes)
+
+upGeneList <- rownames(upgradeGenes)
+downGeneList <- rownames(downgradeGenes)
+
+upGeneList[1:10]
+downGeneList[1:10]
+
+# Here we can go http://www.pantherdb.org/
+# writeClipboard(rownames(upGeneList))
+# writeClipboard(rownames(downGeneList))
+# writeClipboard(rownames(upgradeGenes)[1:10])
+
+
+```
+
+## Convert Ensembl Id into Go Id (or name)
+```{r}
+EG2GO <- EG2GO[EG2GO$go_id != '',]
+
+
+
+s <- EG2GO$ensembl_gene_id %in% upGeneList
+
+upGoId <- EG2GO %>%
+  filter(ensembl_gene_id %in% upGeneList) %>%
+  dplyr::select(go_id)
+upGoId <- unique(upGoId)
+  
+downGoId <- EG2GO %>%
+  filter(ensembl_gene_id %in% downGeneList) %>%
+  dplyr::select(go_id)
+downGoId <- unique(downGoId)
+
+```
+
+
+
+## Using topGo package to do enrichment tests
+```{r}
+# allGeneId <- c(as.list(upGoId), as.list(downGoId))
+# allGene <- factor( unique( allGeneId ) )
+# upGoData <- new("topGOdata",
+#                 description='GO data for increased genes',
+#                 ontology = "BP", allGenes = ,
+#                 geneSel = upGoId,
+#                 nodeSize = 10,
+#                 annot = annFUN.db, affyLib = affyLib)
+# 
+# resultFisher <- runTest(upGoData, algorithm = "classic", statistic = "fisher")
+# resultFisher
+# 
+# resultKS <- runTest(sampleGOdata, algorithm = "classic", statistic = "ks")
+# resultKS.elim <- runTest(sampleGOdata, algorithm = "elim", statistic = "ks")
+# 
+# showSigOfNodes(upGoData, score(resultKS.elim), firstSigNodes = 5, useInfo = 'all')
+
+```
