@@ -1,0 +1,36 @@
+## 5.1 Load Ensmbl to Entrez
+```{r}
+tb <- select(org.Hs.eg.db, key=AllGeneList,
+             columns=c("ENTREZID", "ENSEMBL"),
+             keytype="ENSEMBL")
+
+if(!file.exists('EG2EZ.RDS')){
+  grch37 = useEnsembl(biomart="ensembl", dataset = "hsapiens_gene_ensembl")
+  EG2EZ <- getBM(mart=grch37, attributes=c('ensembl_gene_id','entrezgene'))
+  saveRDS(EG2EZ, file='EG2EZ.RDS')
+}else{
+  EG2EZ <- readRDS('EG2EZ.RDS')
+}
+```
+
+
+## 5.2 Convert Ensembl Id into EZ Id
+```{r}
+EG2EZ <- EG2EZ[EG2EZ$entrezgene != '',]
+
+upGoId <- EG2EZ %>%
+  filter(ensembl_gene_id %in% UpGeneList) %>%
+  dplyr::select(entrezgene)
+upGoId <- unique(upGoId)
+
+downGoId <- EG2EZ %>%
+  filter(ensembl_gene_id %in% DownGeneList) %>%
+  dplyr::select(entrezgene)
+downGoId <- unique(downGoId)
+
+allGoId <- EG2EZ %>%
+  filter(ensembl_gene_id %in% AllGeneList) %>%
+  dplyr::select(entrezgene)
+allGoId <- unique(allGoId)
+
+```

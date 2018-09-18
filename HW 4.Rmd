@@ -1,6 +1,8 @@
 ---
 title: "Hw 4"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -13,6 +15,11 @@ library(pheatmap)
 library(RColorBrewer)
 library(topGO)
 library(biomaRt)
+library(ALL)
+library(gage)
+library("org.Hs.eg.db")
+library(pathview)
+library(png)
 ```
 
 
@@ -61,7 +68,8 @@ summary(cuttedData)
 
 
 
-# 3 Follow Deseq 2 Manual
+# 3 Deseq 2
+## 3.1 Generate result
 ```{r}
 
 colna <- colnames(cuttedData)
@@ -79,193 +87,269 @@ dds <- DESeq2::DESeqDataSetFromMatrix(countData = as.matrix(cuttedData), colData
 
 dds
 
-
+ss <- count(dds,cpm() > 5)
 dds <- DESeq2::DESeq(dds)
 res <- DESeq2::results(dds)
 res
 
 summary(res)
-res05 <- DESeq2::results(dds, alpha=0.05)
+```
+
+## 3.2 Cut result by FDR = 0.05 and abs(lfc) > 1
+```{r}
+res05 <- DESeq2::results(dds, alpha=0.05, lfcThreshold=1, altHypothesis = 'greaterAbs')
+res05inc <- DESeq2::results(dds, alpha=0.05, lfcThreshold=1, altHypothesis = 'greater')
+res05decs <- DESeq2::results(dds, alpha=0.05, lfcThreshold=1, altHypothesis = 'less')
+
 summary(res05)
+summary(res05inc)
+summary(res05decs)
+```
+
+
+
+## 3.3 Get Gene List, sort by lfc
+```{r}
+UpGeneFilter <- which(  !is.na(res$padj) & 
+                                      !is.na(res$log2FoldChange) & 
+                                      res$padj < 0.05 & 
+                                      res$log2FoldChange > 1)
+
+UpGeneslfc <- res$log2FoldChange[UpGeneFilter]
+UpGeneList <- rownames(res)[UpGeneFilter][order(-UpGeneslfc)]
+
+DownGeneFilter <- which(  !is.na(res$padj) & 
+                          !is.na(res$log2FoldChange) & 
+                          res$padj < 0.05 & 
+                          res$log2FoldChange < -1)
+DownGeneslfc <- res$log2FoldChange[DownGeneFilter]
+DownGeneList <- rownames(res)[DownGeneFilter][order(DownGeneslfc)]
+
+AllGeneList <- rownames(res)
+
+
+length(AllGeneList)
+length(UpGeneList)
+length(DownGeneList)
 
 ```
 
+## 3.4 Refine hierarchical clustering
+Use all differentially expressed gene
 ```{r}
-DESeq2::resultsNames(dds)
-resLFC <- DESeq2::lfcShrink(dds, coef="condition_Hoxa1KN_vs_control", type="apeglm")
-resLFC1 <- DESeq2::lfcShrink(dds, coef="condition_Hoxa1KN_vs_control", type="apeglm", res=res)
-resLFC5 <- DESeq2::lfcShrink(dds, coef="condition_Hoxa1KN_vs_control", type="apeglm", res=res05)
-
-DESeq2::summary.DESeqResults(resLFC)
-DESeq2::summary.DESeqResults(resLFC1)
-DESeq2::summary.DESeqResults(resLFC5)
-DESeq2::summary.DESeqResults(res05)
-
-
-DESeq2::plotMA(res, ylim=c(-5,5))
-DESeq2::plotMA(resLFC, ylim=c(-5,5))
-
-DESeq2::plotCounts(dds, gene=which.max(abs(res05$log2FoldChange[which(res05$padj<0.05)])), intgroup="condition")
-DESeq2::plotCounts(dds, gene=which.max(abs(res$log2FoldChange[which(res$padj<0.05)])), intgroup="condition")
-DESeq2::plotCounts(dds, gene=which.max(abs(resLFC$log2FoldChange[which(resLFC$padj<0.05)])), intgroup="condition")
-
-
-DESeq2::plotCounts(dds, gene=which.max(abs(res05$log2FoldChange)), intgroup="condition")
-
+vsd <- vst(dds, blind=FALSE)
 ntd <- normTransform(dds)
-vsn::meanSdPlot(assay(ntd))
+resLFC <- DESeq2::lfcShrink(dds, coef="condition_Hoxa1KN_vs_control", type="apeglm")
 
-select <- order(rowMeans(counts(dds,normalized=TRUE)),
-                decreasing=TRUE)[1:20]
-select2 <- order(abs(resLFC$log2FoldChange[which(resLFC$padj<0.05)]),
-                decreasing=TRUE)[1:200]
+select2 <- order(abs(resLFC$log2FoldChange[which(resLFC$padj<0.05&abs(resLFC$log2FoldChange)>1)]),
+                decreasing=TRUE)
 
 select_diff <- assay(ntd)[select2,]-rowMeans(assay(ntd)[select2,])
 
 select3 <- order(rowMeans(select_diff[,1:3]), decreasing = TRUE)
 #df <- as.data.frame(colData(dds)[,c("condition","type")])
 index <- select2[select3]
+length(index)
 mySd <- sd( assay(ntd)[index,]-rowMeans(assay(ntd)[index,]) )
 pheatmap(( assay(ntd)[index,]-rowMeans(assay(ntd)[index,]) )/mySd, cluster_rows=FALSE, show_rownames=FALSE,
-         cluster_cols=FALSE)
-
-
-
-vsd <- vst(dds, blind=FALSE)
-vsn::meanSdPlot(assay(vsd))
-rld <- rlog(dds, blind=FALSE)
-head(assay(vsd), 3)
-pheatmap(assay(vsd)[select2,], cluster_rows=FALSE, show_rownames=TRUE,
-         cluster_cols=FALSE)
-
-sampleDists <- dist(t(assay(vsd)))
-
-sampleDistMatrix <- as.matrix(sampleDists)
-rownames(sampleDistMatrix) <- paste(vsd$condition, sep="-")
-colnames(sampleDistMatrix) <- NULL
-colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
-pheatmap(sampleDistMatrix,
-         clustering_distance_rows=sampleDists,
-         clustering_distance_cols=sampleDists,
-         col=colors)
-
-plotPCA(vsd, intgroup=c("condition"))
-
-se <- SummarizedExperiment(log2(counts(dds, normalized=TRUE) + 1),
-                           colData=colData(dds))
-
-plotPCA( DESeqTransform( se ) )
-
-plot(res$log2FoldChange,-log10(res$padj)) #Volcano plot. Not sure what this shows
-```
-
-
-## get top increased genes and top decreased genes (alpha = 0.05)
-
-```{r}
-res05inc <- subset(res05, log2FoldChange > 1)
-res05decs <- subset(res05, log2FoldChange < -1)
-summary(res05inc)
-summary(res05decs)
-
-
-# sort
-res05incOrdered <- res05inc[order(-res05inc$log2FoldChange),]
-res05decsOrdered <- res05decs[order(res05decs$log2FoldChange),]
-
-
-summary(res05incOrdered)
-summary(res05decsOrdered)
-res05incOrdered$log2FoldChange[1:50]
-res05decsOrdered$log2FoldChange[1:50]
-
-res05incOrdered[1:50,]
+         cluster_cols=TRUE)
 
 ```
 
-# Enrichment
-## Load Ensmbl to Go_id table
+
+
+
+
+
+# 4. Enrichment: TopGo Solution
+I failed to use topGo package
+
+
+## 4.1 Load Ensmbl to Go_id table
 ```{r}
-
-listEnsembl(GRCh=38)
-listEnsembl(GRCh=37)
-
 if(!file.exists('EG2GO.RDS')){
   grch37 = useEnsembl(biomart="ensembl", dataset = "hsapiens_gene_ensembl")
-  head(listFilters(grch37))
   EG2GO <- getBM(mart=grch37, attributes=c('ensembl_gene_id','go_id'))
   saveRDS(EG2GO, file='EG2GO.RDS')
 }else{
   EG2GO <- readRDS('EG2GO.RDS')
 }
-
 ```
 
-## Filter Genes
 
-```{r}
-upgradeGenes <- res05incOrdered[res05incOrdered$log2FoldChange > 2, ]
-downgradeGenes <- res05decsOrdered[res05decsOrdered$log2FoldChange < -2, ]
-
-cat('Increased (at least increased to twice) gene count: ')
-nrow(upgradeGenes)
-
-cat('Decreased (at least reduced to half) gene count: ')
-nrow(downgradeGenes)
-
-upGeneList <- rownames(upgradeGenes)
-downGeneList <- rownames(downgradeGenes)
-
-upGeneList[1:10]
-downGeneList[1:10]
-
-# Here we can go http://www.pantherdb.org/
-# writeClipboard(rownames(upGeneList))
-# writeClipboard(rownames(downGeneList))
-# writeClipboard(rownames(upgradeGenes)[1:10])
-
-
-```
-
-## Convert Ensembl Id into Go Id (or name)
+## 4.2 Convert Ensembl Id into Go Id (or name)
 ```{r}
 EG2GO <- EG2GO[EG2GO$go_id != '',]
 
-
-
-s <- EG2GO$ensembl_gene_id %in% upGeneList
-
 upGoId <- EG2GO %>%
-  filter(ensembl_gene_id %in% upGeneList) %>%
+  filter(ensembl_gene_id %in% UpGeneList) %>%
   dplyr::select(go_id)
 upGoId <- unique(upGoId)
-  
+
 downGoId <- EG2GO %>%
-  filter(ensembl_gene_id %in% downGeneList) %>%
+  filter(ensembl_gene_id %in% DownGeneList) %>%
   dplyr::select(go_id)
 downGoId <- unique(downGoId)
 
+allGoId <- EG2GO %>%
+  filter(ensembl_gene_id %in% AllGeneList) %>%
+  dplyr::select(go_id)
+allGoId <- unique(allGoId)
+
 ```
 
 
 
-## Using topGo package to do enrichment tests
+## 4.3 Using topGo package to do enrichment tests
+
+```{r, eval=FALSE}
+xx <- annFUN.org("BP", mapping = "org.Hs.eg.db", ID = "symbol")
+head(xx)
+
+geneList <- factor(as.integer( allGoId[,1] %in% upGoId[,1]))
+names(geneList) <- allGoId
+
+str(geneList)
+
+upGoData <- new("topGOdata",
+                 description='GO data for increased genes',
+                 ontology = "BP", allGenes = geneList, geneSel = upGoId, nodeSize = 5,
+                 annot = annFUN.db, mapping = "org.Hs.eg.db", ID = "symbol")
+
+
+resultFisher <- runTest(upGoData, algorithm = "classic", statistic = "fisher")
+resultFisher
+
+resultKS <- runTest(sampleGOdata, algorithm = "classic", statistic = "ks")
+resultKS.elim <- runTest(sampleGOdata, algorithm = "elim", statistic = "ks")
+
+showSigOfNodes(upGoData, score(resultKS.elim), firstSigNodes = 5, useInfo = 'all')
+
+```
+
+
+
+# 5. Pathway: Gage
+
+## 5.1 Map Ids
+
 ```{r}
-# allGeneId <- c(as.list(upGoId), as.list(downGoId))
-# allGene <- factor( unique( allGeneId ) )
-# upGoData <- new("topGOdata",
-#                 description='GO data for increased genes',
-#                 ontology = "BP", allGenes = ,
-#                 geneSel = upGoId,
-#                 nodeSize = 10,
-#                 annot = annFUN.db, affyLib = affyLib)
-# 
-# resultFisher <- runTest(upGoData, algorithm = "classic", statistic = "fisher")
-# resultFisher
-# 
-# resultKS <- runTest(sampleGOdata, algorithm = "classic", statistic = "ks")
-# resultKS.elim <- runTest(sampleGOdata, algorithm = "elim", statistic = "ks")
-# 
-# showSigOfNodes(upGoData, score(resultKS.elim), firstSigNodes = 5, useInfo = 'all')
+res$symbol = mapIds(org.Hs.eg.db,
+                     keys=row.names(res), 
+                     column="SYMBOL",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+res$entrez = mapIds(org.Hs.eg.db,
+                     keys=row.names(res), 
+                     column="ENTREZID",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+res$goids = mapIds(org.Hs.eg.db,
+                     keys=row.names(res), 
+                     column="GO",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+res$name =   mapIds(org.Hs.eg.db,
+                     keys=row.names(res), 
+                     column="GENENAME",
+                     keytype="ENSEMBL",
+                     multiVals="first")
 
 ```
+
+## 5.2 Gage anaylsis using kegg
+
+```{r}
+library(gageData)
+resLFC = res$log2FoldChange
+names(resLFC) = res$entrez
+data(kegg.sets.hs)
+
+kres = gage(resLFC, gsets=kegg.sets.hs, same.dir=TRUE)
+
+
+k_pathways_Up = data.frame(id=rownames(kres$greater), kres$greater) %>% 
+  tbl_df() %>% 
+  filter(row_number()<=5) %>% 
+  .$id %>% 
+  as.character()
+
+k_pathways_Down = data.frame(id=rownames(kres$less), kres$less) %>% 
+  tbl_df() %>% 
+  filter(row_number()<=5) %>% 
+  .$id %>% 
+  as.character()
+
+k_Up_ids = substr(k_pathways_Up, start=1, stop=8)
+k_Down_ids = substr(k_pathways_Down, start=1, stop=8)
+
+```
+
+
+### Up regulated pathways
+
+```{r}
+pathview(gene.data=resLFC, pathway.id=k_Up_ids, species="hsa", kegg.dir = "PathviewResult/Up/", new.signature=FALSE)
+for(f in k_Up_ids){
+  f <- paste0(f,'.pathview.png')
+  knitr::include_graphics(f)
+}
+
+knitr::include_graphics(f)
+```
+
+
+### Down regulated pathways
+
+```{r}
+pathview(gene.data=resLFC, pathway.id=k_Down_ids, species="hsa", kegg.dir = "PathviewResult/Down/", new.signature=FALSE)
+for(f in k_Down_ids){
+  f <- paste0(f,'.pathview.png')
+  img <- readPNG(f)
+  plot.new()
+  rasterImage(img,-0.5, -0.3, 1.5, 1.3)
+}
+
+```
+
+## 5.3 Gage anaylsis using GO
+```{r}
+data(go.sets.hs)
+data(go.subs.hs)
+resLFC = res$log2FoldChange
+
+gobpsets = go.sets.hs[go.subs.hs$BP]
+goccsets = go.sets.hs[go.subs.hs$CC]
+gomfsets = go.sets.hs[go.subs.hs$MF]
+
+GoLFC <- resLFC
+names(GoLFC) <- res$goids
+
+gobpres <- gage(GoLFC, gsets=gobpsets, same.dir=TRUE)
+goccres = gage(GoLFC, gsets=goccsets, same.dir=TRUE)
+gomfres = gage(GoLFC, gsets=gomfsets, same.dir=TRUE)
+
+
+gobpres = gage(resLFC, gsets=gobpsets, same.dir=TRUE)
+
+```
+
+### bp result
+
+```{r}
+
+head(gob)
+lapply(gobpres, head)
+```
+
+### cc result
+```{r}
+lapply(goccres, head)
+```
+
+### mf result
+
+```{r}
+lapply(gomfres, head)
+```
+
