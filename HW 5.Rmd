@@ -32,6 +32,7 @@ Workstation already having all files saved in /STAT736 folder.
 What we need to do is create our own folder, and link files from STAT736 to our data folder.
 
 ## 2.1 Create your own data folder
+
 ```{bash}
 mkdir mydata
 cd mydata
@@ -39,6 +40,7 @@ cd mydata
 
 
 ## 2.3 link from data folder
+
 ```{bash}
 ln -s /STAT736/SRR493366_1.fastq.gz SRR493366_1.fastq.gz
 ln -s /STAT736/SRR493366_2.fastq.gz SRR493366_2.fastq.gz
