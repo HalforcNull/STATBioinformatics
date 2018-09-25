@@ -12,7 +12,7 @@ This file discribe each step of getting the read count data we used in last seve
 
 Ubuntu 
 
-# 1. Download data
+# 1. Get data - Download data using fastq-dump
 
 ```{bash}
 nohup fastq-dump --gzip --split-files SRR493366 &
@@ -24,9 +24,10 @@ nohup fastq-dump --gzip --split-files SRR493371 &
 ```
 
 This is download process need about 2.5 hours.
-Instead, we can link the file if it is already downloaded in some folder.
 
-# 2. Get data - link downloaded data
+Instead, we can link the files if they are already downloaded in some folder.
+
+# 2. Get data - Link downloaded data
 
 Workstation already having all files saved in /STAT736 folder.
 What we need to do is create our own folder, and link files from STAT736 to our data folder.
@@ -57,6 +58,9 @@ ln -s /STAT736/SRR493371_2.fastq.gz SRR493371_2.fastq.gz
 ```
 
 # 3. fastqc
+
+Fastqc will generate a report based on fastq read quality. 
+https://en.wikipedia.org/wiki/FASTQ_format
 
 ```{bash}
 fastqc -q SRR493366_1.fastq.gz &
