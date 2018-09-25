@@ -1,8 +1,8 @@
 ---
 title: "Hw 4"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -13,13 +13,6 @@ library(apeglm)
 library(vsn)
 library(pheatmap)
 library(RColorBrewer)
-library(topGO)
-library(biomaRt)
-library(ALL)
-library(gage)
-library("org.Hs.eg.db")
-library(pathview)
-library(png)
 ```
 
 
@@ -87,7 +80,6 @@ dds <- DESeq2::DESeqDataSetFromMatrix(countData = as.matrix(cuttedData), colData
 
 dds
 
-ss <- count(dds,cpm() > 5)
 dds <- DESeq2::DESeq(dds)
 res <- DESeq2::results(dds)
 res
@@ -159,14 +151,22 @@ pheatmap(( assay(ntd)[index,]-rowMeans(assay(ntd)[index,]) )/mySd, cluster_rows=
 
 
 
+```{r}
+library(biomaRt)
+library(ALL)
+library(gage)
+library("org.Hs.eg.db")
+library(pathview)
+library(png)
+library(GO.db)
+library(GOstats)
+```
 
 
 # 4. Enrichment: TopGo Solution
-I failed to use topGo package
-
-
-## 4.1 Load Ensmbl to Go_id table
-```{r}
+I failed to use topGo package. Instead, I use GOStats package.
+## 4.1 Load Ensmbl to Go_id table 
+```{r, eval=FALSE}
 if(!file.exists('EG2GO.RDS')){
   grch37 = useEnsembl(biomart="ensembl", dataset = "hsapiens_gene_ensembl")
   EG2GO <- getBM(mart=grch37, attributes=c('ensembl_gene_id','go_id'))
@@ -178,7 +178,7 @@ if(!file.exists('EG2GO.RDS')){
 
 
 ## 4.2 Convert Ensembl Id into Go Id (or name)
-```{r}
+```{r, eval=FALSE}
 EG2GO <- EG2GO[EG2GO$go_id != '',]
 
 upGoId <- EG2GO %>%
@@ -201,7 +201,6 @@ allGoId <- unique(allGoId)
 
 
 ## 4.3 Using topGo package to do enrichment tests
-
 ```{r, eval=FALSE}
 xx <- annFUN.org("BP", mapping = "org.Hs.eg.db", ID = "symbol")
 head(xx)
@@ -227,9 +226,7 @@ showSigOfNodes(upGoData, score(resultKS.elim), firstSigNodes = 5, useInfo = 'all
 
 ```
 
-
-
-# 5. Pathway: Gage
+# 5. Using GOStat package to do enrichment tests
 
 ## 5.1 Map Ids
 
@@ -257,7 +254,125 @@ res$name =   mapIds(org.Hs.eg.db,
 
 ```
 
-## 5.2 Gage anaylsis using kegg
+## 5.2 Up regulated list and Down regulated list
+
+Up: filter by P.adj < 0.05 and LFC > 1  
+Down: filter by P.adj < 0.05 and LFC < -1  
+
+```{r}
+up.idx <- which(res$padj<0.05 & res$log2FoldChange > 1)
+up.entrez.id <- unique(res[up.idx, 'entrez'])
+
+down.idx <- which(res$padj<0.05 & res$log2FoldChange < -1)
+down.entrez.id <- unique(res[down.idx, 'entrez'])
+
+universeGenes <-  unique(res$entrez)
+
+```
+
+## 5.3 Up gene GO analysis
+
+### BP
+```{r}
+params <- new("GOHyperGParams",
+     geneIds=up.entrez.id,
+     universeGeneIds=universeGenes,
+     annotation="org.Hs.eg.db",
+     ontology="BP",
+     pvalueCutoff=0.001,
+     conditional=FALSE,
+     testDirection="over")
+
+hgOver <- hyperGTest(params)
+summary(hgOver)[1:10,c("GOBPID","Pvalue","Term")]
+```
+
+### CC
+```{r}
+params <- new("GOHyperGParams",
+     geneIds=up.entrez.id,
+     universeGeneIds=universeGenes,
+     annotation="org.Hs.eg.db",
+     ontology="CC",
+     pvalueCutoff=0.001,
+     conditional=FALSE,
+     testDirection="over")
+
+hgOver <- hyperGTest(params)
+summary(hgOver)[1:10,c("GOCCID","Pvalue","Term")]
+```
+
+### MF
+```{r}
+params <- new("GOHyperGParams",
+     geneIds=up.entrez.id,
+     universeGeneIds=universeGenes,
+     annotation="org.Hs.eg.db",
+     ontology="MF",
+     pvalueCutoff=0.001,
+     conditional=FALSE,
+     testDirection="over")
+
+hgOver <- hyperGTest(params)
+summary(hgOver)[1:10,c("GOMFID","Pvalue","Term")]
+```
+
+## 5.4 Down gene GO analysis
+
+### BP
+```{r}
+params <- new("GOHyperGParams",
+     geneIds=down.entrez.id,
+     universeGeneIds=universeGenes,
+     annotation="org.Hs.eg.db",
+     ontology="BP",
+     pvalueCutoff=0.001,
+     conditional=FALSE,
+     testDirection="over")
+
+hgOver <- hyperGTest(params)
+summary(hgOver)[1:10,c("GOBPID","Pvalue","Term")]
+```
+
+### CC
+```{r}
+params <- new("GOHyperGParams",
+     geneIds=down.entrez.id,
+     universeGeneIds=universeGenes,
+     annotation="org.Hs.eg.db",
+     ontology="CC",
+     pvalueCutoff=0.001,
+     conditional=FALSE,
+     testDirection="over")
+
+hgOver <- hyperGTest(params)
+summary(hgOver)[1:10,c("GOCCID","Pvalue","Term")]
+```
+
+### MF
+```{r}
+params <- new("GOHyperGParams",
+     geneIds=down.entrez.id,
+     universeGeneIds=universeGenes,
+     annotation="org.Hs.eg.db",
+     ontology="MF",
+     pvalueCutoff=0.001,
+     conditional=FALSE,
+     testDirection="over")
+
+hgOver <- hyperGTest(params)
+summary(hgOver)[1:10,c("GOMFID","Pvalue","Term")]
+```
+
+
+
+
+
+# 6. Pathway: Gage
+
+
+
+## 6.1 Gage anaylsis using kegg
 
 ```{r}
 library(gageData)
@@ -312,7 +427,7 @@ for(f in k_Down_ids){
 
 ```
 
-## 5.3 Gage anaylsis using GO
+## 6.2 Gage anaylsis using GO
 ```{r}
 data(go.sets.hs)
 data(go.subs.hs)
@@ -338,7 +453,6 @@ gobpres = gage(resLFC, gsets=gobpsets, same.dir=TRUE)
 
 ```{r}
 
-head(gob)
 lapply(gobpres, head)
 ```
 
