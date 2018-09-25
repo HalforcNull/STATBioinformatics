@@ -11,4 +11,27 @@ Based on Gene2 Server.
 Docker one can found in https://github.com/HalforcNull/STATBioinformatics/blob/master/HW%205.Rmd
 
 
+# 0. 
+
+## 0.1 Commands
+
+---
+
+---
+
+
+## 0.1 Directories
+
+Home Directory:  
+Directory to save important documents. The Directory you are in when login with putty. 
+To access home directory, using command:
+```{bash}
+cd /home/[your user name]
+```
+
+Data Directory: Directory to save large data files. To access data folder, using command:
+```{bash}
+cd /nfs/[your user name]
+```
+
 
