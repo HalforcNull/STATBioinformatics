@@ -1,0 +1,55 @@
+---
+title: "Steps to get read count"
+author: "Runan Yao"
+date: "September 25, 2018"
+output: html_document
+---
+
+
+This file discribe each step of getting the read count data we used in last several week.
+
+# 0. Operating System
+
+
+
+# 1. Get data
+
+## 1.1 Create your own data folder
+```{bash}
+mkdir mydata
+cd mydata
+```
+
+## 1.2 link from data folder
+```{bash}
+ln -s /STAT736/SRR493366_1.fastq.gz SRR493366_1.fastq.gz
+ln -s /STAT736/SRR493366_2.fastq.gz SRR493366_2.fastq.gz
+ln -s /STAT736/SRR493367_1.fastq.gz SRR493367_1.fastq.gz
+ln -s /STAT736/SRR493367_2.fastq.gz SRR493367_2.fastq.gz
+ln -s /STAT736/SRR493368_1.fastq.gz SRR493368_1.fastq.gz
+ln -s /STAT736/SRR493368_2.fastq.gz SRR493368_2.fastq.gz
+ln -s /STAT736/SRR493369_1.fastq.gz SRR493369_1.fastq.gz
+ln -s /STAT736/SRR493369_2.fastq.gz SRR493369_2.fastq.gz
+ln -s /STAT736/SRR493370_1.fastq.gz SRR493370_1.fastq.gz
+ln -s /STAT736/SRR493370_2.fastq.gz SRR493370_2.fastq.gz
+ln -s /STAT736/SRR493371_1.fastq.gz SRR493371_1.fastq.gz
+ln -s /STAT736/SRR493371_2.fastq.gz SRR493371_2.fastq.gz
+```
+
+# 2. fastqc
+
+```{bash}
+fastqc -q SRR493366_1.fastq.gz &
+fastqc -q SRR493366_2.fastq.gz &
+fastqc -q SRR493367_1.fastq.gz &
+fastqc -q SRR493367_2.fastq.gz &
+fastqc -q SRR493368_1.fastq.gz &
+fastqc -q SRR493368_2.fastq.gz &
+fastqc -q SRR493369_1.fastq.gz &
+fastqc -q SRR493369_2.fastq.gz &
+fastqc -q SRR493370_1.fastq.gz &
+fastqc -q SRR493370_2.fastq.gz &
+fastqc -q SRR493371_1.fastq.gz &
+fastqc -q SRR493371_2.fastq.gz &
+```
+
