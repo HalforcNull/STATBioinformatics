@@ -10,17 +10,35 @@ This file discribe each step of getting the read count data we used in last seve
 
 # 0. Operating System
 
+Ubuntu 
 
+# 1. Download data
 
-# 1. Get data
+```{bash}
+nohup fastq-dump --gzip --split-files SRR493366 &
+nohup fastq-dump --gzip --split-files SRR493367 &
+nohup fastq-dump --gzip --split-files SRR493368 &
+nohup fastq-dump --gzip --split-files SRR493369 &
+nohup fastq-dump --gzip --split-files SRR493370 &
+nohup fastq-dump --gzip --split-files SRR493371 &
+```
 
-## 1.1 Create your own data folder
+This is download process need about 2.5 hours.
+Instead, we can link the file if it is already downloaded in some folder.
+
+# 2. Get data - link downloaded data
+
+Workstation already having all files saved in /STAT736 folder.
+What we need to do is create our own folder, and link files from STAT736 to our data folder.
+
+## 2.1 Create your own data folder
 ```{bash}
 mkdir mydata
 cd mydata
 ```
 
-## 1.2 link from data folder
+
+## 2.3 link from data folder
 ```{bash}
 ln -s /STAT736/SRR493366_1.fastq.gz SRR493366_1.fastq.gz
 ln -s /STAT736/SRR493366_2.fastq.gz SRR493366_2.fastq.gz
@@ -36,7 +54,7 @@ ln -s /STAT736/SRR493371_1.fastq.gz SRR493371_1.fastq.gz
 ln -s /STAT736/SRR493371_2.fastq.gz SRR493371_2.fastq.gz
 ```
 
-# 2. fastqc
+# 3. fastqc
 
 ```{bash}
 fastqc -q SRR493366_1.fastq.gz &
@@ -53,9 +71,9 @@ fastqc -q SRR493371_1.fastq.gz &
 fastqc -q SRR493371_2.fastq.gz &
 ```
 
-# 3. Kallisto
+# 4. Kallisto
 
-## 3.1 Download cdna data and ncrna data
+## 4.1 Download cdna data and ncrna data
 
 Since we are discussing human cancer, we are download cdna and ncrna of homo sapiens. 
 After download, we combine them into one data file.
@@ -65,13 +83,13 @@ wget ftp://ftp.ensembl.org/pub/current_fasta/homo_sapiens/ncrna/Homo_sapiens.GRC
 cat Homo_sapiens.GRCh38.cdna.all.fa.gz Homo_sapiens.GRCh38.ncrna.fa.gz > Homo_sapiens.GRCh38.rna.fa.gz
 ```
 
-## 3.2 Build index
+## 4.2 Build index
 
 ```{bash}
 kallisto index -i hsGRCh38_kallisto Homo_sapiens.GRCh38.rna.fa.gz
 ```
 
-## 3.3 Run kallisto
+## 4.3 Run kallisto
 
 -i hsGRCh38_kallisto : the index we just build
 -t 4 : use 4 core
@@ -87,8 +105,30 @@ kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493370 SRR493370_1.fastq.gz SRR49
 kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493371 SRR493371_1.fastq.gz SRR493371_2.fastq.gz &
 ```
 
-# 4. Convert read into one table using R
+# 5. Convert read into one table using R
 
 ```{r}
+library(EnsDb.Hsapiens.v86)
+
+esdb <- EnsDb.Hsapiens.v86
+
+newtxs <- transcripts(esdb, return.type = 'data.frame')
+k <- keys(esdb, keytype = "TXNAME")
+tx2gene <- dplyr::select(newtxs, one_of(c('tx_name', 'gene_id')))
+colnames(tx2gene) <- c('TXNAME', 'GENEID')
+
+files <- c(
+  'kallistoResult_NT1/abundance.tsv',
+  'kallistoResult_NT2/abundance.tsv',
+  'kallistoResult_NT3/abundance.tsv',
+  'kallistoResult_TR1/abundance.tsv',
+  'kallistoResult_TR2/abundance.tsv',
+  'kallistoResult_TR3/abundance.tsv')
+names(files) <- c('NT1','NT2','NT3','TR1','TR2','TR3')
+
+
+txi.kallisto.tsv <- tximport(files, type = "kallisto", tx2gene = tx2gene, ignoreAfterBar = TRUE, ignoreTxVersion=TRUE )
+write.csv(txi.kallisto.tsv$counts, file="ReadCount(Kallisto).csv", row.names = TRUE)
+
 
 ```
