@@ -1,0 +1,11 @@
+---
+title: "Steps to get read count using Docker"
+author: "Runan Yao"
+date: "September 25, 2018"
+output: html_document
+---
+
+This file discribe each step of getting the read count data we used in last several week.
+Based on WorkStation Server.
+
+Docker one can found in 
