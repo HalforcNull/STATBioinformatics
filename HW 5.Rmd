@@ -7,6 +7,9 @@ output: html_document
 
 
 This file discribe each step of getting the read count data we used in last several week.
+Based on WorkStation Server.
+
+Docker one can found in https://github.com/HalforcNull/STATBioinformatics/blob/master/HW%205_Docker%20version.Rmd
 
 # 0. Operating System
 

@@ -6,6 +6,9 @@ output: html_document
 ---
 
 This file discribe each step of getting the read count data we used in last several week.
-Based on WorkStation Server.
+Based on Gene2 Server.
 
-Docker one can found in 
+Docker one can found in https://github.com/HalforcNull/STATBioinformatics/blob/master/HW%205.Rmd
+
+
+
