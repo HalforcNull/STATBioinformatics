@@ -9,7 +9,7 @@ output: html_document
 This file discribe each step of getting the read count data we used in last several week.
 Based on WorkStation Server.
 
-Docker one can found in https://github.com/HalforcNull/STATBioinformatics/blob/master/HW%205_Docker%20version.Rmd
+Gene2 one can found in https://github.com/HalforcNull/STATBioinformatics/blob/master/HW%205_Docker%20version.Rmd
 
 # 0. Operating System
 
@@ -17,7 +17,7 @@ Ubuntu
 
 # 1. Get data - Download data using fastq-dump
 
-```{bash}
+```{bash eval=FALSE}
 nohup fastq-dump --gzip --split-files SRR493366 &
 nohup fastq-dump --gzip --split-files SRR493367 &
 nohup fastq-dump --gzip --split-files SRR493368 &
@@ -37,7 +37,7 @@ What we need to do is create our own folder, and link files from STAT736 to our 
 
 ## 2.1 Create your own data folder
 
-```{bash}
+```{bash eval=FALSE}
 mkdir mydata
 cd mydata
 ```
@@ -45,7 +45,7 @@ cd mydata
 
 ## 2.3 link from data folder
 
-```{bash}
+```{bash eval=FALSE}
 ln -s /STAT736/SRR493366_1.fastq.gz SRR493366_1.fastq.gz
 ln -s /STAT736/SRR493366_2.fastq.gz SRR493366_2.fastq.gz
 ln -s /STAT736/SRR493367_1.fastq.gz SRR493367_1.fastq.gz
@@ -65,7 +65,7 @@ ln -s /STAT736/SRR493371_2.fastq.gz SRR493371_2.fastq.gz
 Fastqc will generate a report based on fastq read quality. 
 https://en.wikipedia.org/wiki/FASTQ_format
 
-```{bash}
+```{bash eval=FALSE}
 fastqc -q SRR493366_1.fastq.gz &
 fastqc -q SRR493366_2.fastq.gz &
 fastqc -q SRR493367_1.fastq.gz &
@@ -86,7 +86,7 @@ fastqc -q SRR493371_2.fastq.gz &
 
 Since we are discussing human cancer, we are download cdna and ncrna of homo sapiens. 
 After download, we combine them into one data file.
-```{bash}
+```{bash eval=FALSE}
 wget ftp://ftp.ensembl.org/pub/current_fasta/homo_sapiens/cdna/Homo_sapiens.GRCh38.cdna.all.fa.gz
 wget ftp://ftp.ensembl.org/pub/current_fasta/homo_sapiens/ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz
 cat Homo_sapiens.GRCh38.cdna.all.fa.gz Homo_sapiens.GRCh38.ncrna.fa.gz > Homo_sapiens.GRCh38.rna.fa.gz
@@ -94,7 +94,7 @@ cat Homo_sapiens.GRCh38.cdna.all.fa.gz Homo_sapiens.GRCh38.ncrna.fa.gz > Homo_sa
 
 ## 4.2 Build index
 
-```{bash}
+```{bash eval=FALSE}
 kallisto index -i hsGRCh38_kallisto Homo_sapiens.GRCh38.rna.fa.gz
 ```
 
@@ -105,7 +105,7 @@ kallisto index -i hsGRCh38_kallisto Homo_sapiens.GRCh38.rna.fa.gz
 
 If this is single end read, we need setup the read length using: -l 
 
-```{bash}
+```{bash eval=FALSE}
 kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493366 SRR493366_1.fastq.gz SRR493366_2.fastq.gz &
 kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493367 SRR493367_1.fastq.gz SRR493367_2.fastq.gz &
 kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493368 SRR493368_1.fastq.gz SRR493368_2.fastq.gz &
@@ -116,7 +116,7 @@ kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493371 SRR493371_1.fastq.gz SRR49
 
 # 5. Convert read into one table using R
 
-```{r}
+```{r eval=FALSE}
 library(EnsDb.Hsapiens.v86)
 
 esdb <- EnsDb.Hsapiens.v86
@@ -127,14 +127,13 @@ tx2gene <- dplyr::select(newtxs, one_of(c('tx_name', 'gene_id')))
 colnames(tx2gene) <- c('TXNAME', 'GENEID')
 
 files <- c(
-  'kallistoResult_NT1/abundance.tsv',
-  'kallistoResult_NT2/abundance.tsv',
-  'kallistoResult_NT3/abundance.tsv',
-  'kallistoResult_TR1/abundance.tsv',
-  'kallistoResult_TR2/abundance.tsv',
-  'kallistoResult_TR3/abundance.tsv')
-names(files) <- c('NT1','NT2','NT3','TR1','TR2','TR3')
-
+  'SRR493366/abundance.tsv',
+  'SRR493367/abundance.tsv',
+  'SRR493368/abundance.tsv',
+  'SRR493369/abundance.tsv',
+  'SRR493370/abundance.tsv',
+  'SRR493371/abundance.tsv')
+names(files) <- c('Scramble1','Scramble2','Scramble3','HOXA1KD1','HOXA1KD2','HOXA1KD3')
 
 txi.kallisto.tsv <- tximport(files, type = "kallisto", tx2gene = tx2gene, ignoreAfterBar = TRUE, ignoreTxVersion=TRUE )
 write.csv(txi.kallisto.tsv$counts, file="ReadCount(Kallisto).csv", row.names = TRUE)
