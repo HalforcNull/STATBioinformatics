@@ -1,0 +1,144 @@
+---
+title: "Steps to get read count using Gene2 Server"
+author: "Runan Yao"
+date: "September 25, 2018"
+output: html_document
+---
+
+This file discribe each step of getting the read count data we used in last several week.
+Based on Gene2 Server.
+
+Workstation one can found in https://github.com/HalforcNull/STATBioinformatics/blob/master/HW%205.Rmd
+
+
+# 1. Download Data
+
+## 1.0 Information we need
+```{bash eval=FALSE}
+username="[Put Your Username of linux]"
+NCBISRAToolkitUrl="https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/current/sratoolkit.current-centos_linux64.tar.gz"
+```
+
+## 1.1 Download and unzip SRA Toolkit
+```{bash eval=FALSE}
+# Navigate to your nfs folder
+cd /nfs/$username
+
+# Download and rename sratoolkit zip package
+wget $NCBISRAToolkitUrl -O sratoolkit.tar.gz
+
+# Unzip
+tar -zxf sratoolkit.tar.gz
+
+# Rename the unzipped folder name
+mv sratoolkit.2.9.2-centos_linux64 sratoolkit
+
+```
+
+## 1.2 Downlad data
+```{bash eval=FALSE}
+nohup sratoolkit/bin/fastq-dump --gzip --split-files SRR493366 &
+nohup sratoolkit/bin/fastq-dump --gzip --split-files SRR493367 &
+nohup sratoolkit/bin/fastq-dump --gzip --split-files SRR493368 &
+nohup sratoolkit/bin/fastq-dump --gzip --split-files SRR493369 &
+nohup sratoolkit/bin/fastq-dump --gzip --split-files SRR493370 &
+nohup sratoolkit/bin/fastq-dump --gzip --split-files SRR493371 &
+```
+
+The downloading process will take hours.
+
+
+# 2. FastQC
+
+Gene2 contains fastqc module. So we can load and use it.
+```{bash eval=FALSE}
+module load FastQC/0.11.7
+
+nohup fastqc -q SRR493366_1.fastq.gz &
+nohup fastqc -q SRR493366_2.fastq.gz &
+nohup fastqc -q SRR493367_1.fastq.gz &
+nohup fastqc -q SRR493367_2.fastq.gz &
+nohup fastqc -q SRR493368_1.fastq.gz &
+nohup fastqc -q SRR493368_2.fastq.gz &
+nohup fastqc -q SRR493369_1.fastq.gz &
+nohup fastqc -q SRR493369_2.fastq.gz &
+nohup fastqc -q SRR493370_1.fastq.gz &
+nohup fastqc -q SRR493370_2.fastq.gz &
+nohup fastqc -q SRR493371_1.fastq.gz &
+nohup fastqc -q SRR493371_2.fastq.gz &
+```
+
+# 3. Kallisto
+
+## 3.1 Download Kallisto 
+```{bash eval=FALSE}
+# Download and rename sratoolkit zip package
+wget https://github.com/pachterlab/kallisto/releases/download/v0.44.0/kallisto_linux-v0.44.0.tar.gz
+
+# Unzip
+tar -xzvf kallisto_linux-v0.44.0.tar.gz
+
+# Rename the unzipped folder name
+move kallisto_linux-v0.44.0 kallisto
+```
+
+## 3.2 Download cdna data and ncrna data
+
+Since we are discussing human cancer, we are download cdna and ncrna of homo sapiens. 
+After download, we combine them into one data file.
+```{bash eval=FALSE}
+wget ftp://ftp.ensembl.org/pub/current_fasta/homo_sapiens/cdna/Homo_sapiens.GRCh38.cdna.all.fa.gz
+wget ftp://ftp.ensembl.org/pub/current_fasta/homo_sapiens/ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz
+cat Homo_sapiens.GRCh38.cdna.all.fa.gz Homo_sapiens.GRCh38.ncrna.fa.gz > Homo_sapiens.GRCh38.rna.fa.gz
+```
+
+## 3.3 Build index
+
+```{bash eval=FALSE}
+kallisto/kallisto index -i hsGRCh38_kallisto Homo_sapiens.GRCh38.rna.fa.gz
+```
+
+## 3.4 Run kallisto
+
+-i hsGRCh38_kallisto : the index we just build
+-t 4 : use 4 core
+
+If this is single end read, we need setup the read length using: -l 
+
+```{bash eval=FALSE}
+kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493366 SRR493366_1.fastq.gz SRR493366_2.fastq.gz &
+kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493367 SRR493367_1.fastq.gz SRR493367_2.fastq.gz &
+kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493368 SRR493368_1.fastq.gz SRR493368_2.fastq.gz &
+kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493369 SRR493369_1.fastq.gz SRR493369_2.fastq.gz &
+kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493370 SRR493370_1.fastq.gz SRR493370_2.fastq.gz &
+kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493371 SRR493371_1.fastq.gz SRR493371_2.fastq.gz &
+```
+
+
+# 4. Convert read into one table using R
+
+```{r eval=FALSE}
+library(EnsDb.Hsapiens.v86)
+
+esdb <- EnsDb.Hsapiens.v86
+
+newtxs <- transcripts(esdb, return.type = 'data.frame')
+k <- keys(esdb, keytype = "TXNAME")
+tx2gene <- dplyr::select(newtxs, one_of(c('tx_name', 'gene_id')))
+colnames(tx2gene) <- c('TXNAME', 'GENEID')
+
+files <- c(
+  'SRR493366/abundance.tsv',
+  'SRR493367/abundance.tsv',
+  'SRR493368/abundance.tsv',
+  'SRR493369/abundance.tsv',
+  'SRR493370/abundance.tsv',
+  'SRR493371/abundance.tsv')
+names(files) <- c('Scramble1','Scramble2','Scramble3','HOXA1KD1','HOXA1KD2','HOXA1KD3')
+
+
+txi.kallisto.tsv <- tximport(files, type = "kallisto", tx2gene = tx2gene, ignoreAfterBar = TRUE, ignoreTxVersion=TRUE )
+write.csv(txi.kallisto.tsv$counts, file="ReadCount(Kallisto).csv", row.names = TRUE)
+
+
+```
