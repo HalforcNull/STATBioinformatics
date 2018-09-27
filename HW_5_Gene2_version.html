@@ -204,18 +204,19 @@ cat Homo_sapiens.GRCh38.cdna.all.fa.gz Homo_sapiens.GRCh38.ncrna.fa.gz &gt; Homo
 </div>
 <div id="build-index" class="section level2">
 <h2>3.3 Build index</h2>
-<pre class="bash"><code>kallisto/kallisto index -i hsGRCh38_kallisto Homo_sapiens.GRCh38.rna.fa.gz</code></pre>
+<pre class="bash"><code>nohup kallisto/kallisto index -i hsGRCh38_kallisto Homo_sapiens.GRCh38.rna.fa.gz &amp;</code></pre>
 </div>
 <div id="run-kallisto" class="section level2">
 <h2>3.4 Run kallisto</h2>
-<p>-i hsGRCh38_kallisto : the index we just build -t 4 : use 4 core</p>
+<p>-i hsGRCh38_kallisto : the index we just build</p>
+<p>-t 4 : use 4 core</p>
 <p>If this is single end read, we need setup the read length using: -l</p>
-<pre class="bash"><code>kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493366 SRR493366_1.fastq.gz SRR493366_2.fastq.gz &amp;
-kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493367 SRR493367_1.fastq.gz SRR493367_2.fastq.gz &amp;
-kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493368 SRR493368_1.fastq.gz SRR493368_2.fastq.gz &amp;
-kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493369 SRR493369_1.fastq.gz SRR493369_2.fastq.gz &amp;
-kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493370 SRR493370_1.fastq.gz SRR493370_2.fastq.gz &amp;
-kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493371 SRR493371_1.fastq.gz SRR493371_2.fastq.gz &amp;</code></pre>
+<pre class="bash"><code>nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493366 SRR493366_1.fastq.gz SRR493366_2.fastq.gz &amp;
+nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493367 SRR493367_1.fastq.gz SRR493367_2.fastq.gz &amp;
+nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493368 SRR493368_1.fastq.gz SRR493368_2.fastq.gz &amp;
+nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493369 SRR493369_1.fastq.gz SRR493369_2.fastq.gz &amp;
+nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493370 SRR493370_1.fastq.gz SRR493370_2.fastq.gz &amp;
+nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493371 SRR493371_1.fastq.gz SRR493371_2.fastq.gz &amp;</code></pre>
 </div>
 </div>
 <div id="convert-read-into-one-table-using-r" class="section level1">

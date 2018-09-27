@@ -95,23 +95,24 @@ cat Homo_sapiens.GRCh38.cdna.all.fa.gz Homo_sapiens.GRCh38.ncrna.fa.gz > Homo_sa
 ## 3.3 Build index
 
 ```{bash eval=FALSE}
-kallisto/kallisto index -i hsGRCh38_kallisto Homo_sapiens.GRCh38.rna.fa.gz
+nohup kallisto/kallisto index -i hsGRCh38_kallisto Homo_sapiens.GRCh38.rna.fa.gz &
 ```
 
 ## 3.4 Run kallisto
 
 -i hsGRCh38_kallisto : the index we just build
+
 -t 4 : use 4 core
 
 If this is single end read, we need setup the read length using: -l 
 
 ```{bash eval=FALSE}
-kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493366 SRR493366_1.fastq.gz SRR493366_2.fastq.gz &
-kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493367 SRR493367_1.fastq.gz SRR493367_2.fastq.gz &
-kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493368 SRR493368_1.fastq.gz SRR493368_2.fastq.gz &
-kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493369 SRR493369_1.fastq.gz SRR493369_2.fastq.gz &
-kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493370 SRR493370_1.fastq.gz SRR493370_2.fastq.gz &
-kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493371 SRR493371_1.fastq.gz SRR493371_2.fastq.gz &
+nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493366 SRR493366_1.fastq.gz SRR493366_2.fastq.gz &
+nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493367 SRR493367_1.fastq.gz SRR493367_2.fastq.gz &
+nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493368 SRR493368_1.fastq.gz SRR493368_2.fastq.gz &
+nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493369 SRR493369_1.fastq.gz SRR493369_2.fastq.gz &
+nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493370 SRR493370_1.fastq.gz SRR493370_2.fastq.gz &
+nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493371 SRR493371_1.fastq.gz SRR493371_2.fastq.gz &
 ```
 
 
