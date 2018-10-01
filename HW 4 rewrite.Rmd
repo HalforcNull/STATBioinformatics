@@ -1,0 +1,52 @@
+---
+title: "Hw 4 Rewrite"
+author: "Runan Yao"
+date: "October 1, 2018"
+output: 
+    html_document:
+        css: customstyles.css
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DESeq2)
+library(edgeR)
+library(dplyr)
+library(apeglm)
+library(vsn)
+library(pheatmap)
+library(RColorBrewer)
+```
+
+
+# 1. Load Data
+```{r}
+data <- read.csv('GSE37704.csv')
+rownames(data) <- data[,1]
+data <- data[,-1]
+
+colna <- colnames(data)
+coldata <- as.data.frame(c('control','control','control','Hoxa1KN','Hoxa1KN','Hoxa1KN'))
+colnames(coldata) <- c('condition')
+rownames(coldata) <- colna
+```
+
+# 2. Cut Data
+by [pre-filtering section in DESeq2 Manual](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#pre-filtering)
+>Pre-filtering
+While it is not necessary to pre-filter low count genes before running the DESeq2 functions, there are two reasons which make pre-filtering useful: by removing rows in which there are very few reads, we reduce the memory size of the dds data object, and we increase the speed of the transformation and testing functions within DESeq2. Here we perform a minimal pre-filtering to keep only rows that have at least 10 reads total. Note that more strict filtering to increase power is automatically applied via independent filtering on the mean of normalized counts within the results function.
+>
+>keep <- rowSums(counts(dds)) >= 10
+>
+>dds <- dds[keep,]
+
+Here, we need at least 5 column has more than 1 cpm.
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = as.matrix(data), colData = coldata, design = ~ condition )
+dds <- DESeq(dds)
+dds <- dds[ rowSums( counts(dds) >= 1 ) >= 5 ]
+```
+
+# 3. 
