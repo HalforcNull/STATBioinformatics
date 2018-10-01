@@ -222,6 +222,8 @@ nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493371 SRR493371_1
 <div id="convert-read-into-one-table-using-r" class="section level1">
 <h1>4. Convert read into one table using R</h1>
 <pre class="r"><code>library(EnsDb.Hsapiens.v86)
+library(dplyr)
+library('tximport')
 
 esdb &lt;- EnsDb.Hsapiens.v86
 

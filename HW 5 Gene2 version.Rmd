@@ -120,6 +120,8 @@ nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493371 SRR493371_1
 
 ```{r eval=FALSE}
 library(EnsDb.Hsapiens.v86)
+library(dplyr)
+library('tximport')
 
 esdb <- EnsDb.Hsapiens.v86
 
@@ -141,5 +143,12 @@ names(files) <- c('Scramble1','Scramble2','Scramble3','HOXA1KD1','HOXA1KD2','HOX
 txi.kallisto.tsv <- tximport(files, type = "kallisto", tx2gene = tx2gene, ignoreAfterBar = TRUE, ignoreTxVersion=TRUE )
 write.csv(txi.kallisto.tsv$counts, file="ReadCount(Kallisto).csv", row.names = TRUE)
 
+
+```
+
+
+# 5. Compare read from kallisto vs. the .csv file we used
+
+```{r}
 
 ```
