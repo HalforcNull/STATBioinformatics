@@ -49,4 +49,14 @@ dds <- DESeq(dds)
 dds <- dds[ rowSums( counts(dds) >= 1 ) >= 5 ]
 ```
 
-# 3. 
+# 3. Do log transform and vst transform
+```{r}
+rlog.dds <- rlog(dds, blind = FALSE)
+vsd <- vst(dds, blind = FALSE)
+
+```
+
+## 3.1 PCA
+```{r}
+plotPCA(rlog.dds)
+```
