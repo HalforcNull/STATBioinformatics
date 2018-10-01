@@ -4,3 +4,7 @@
 .Ruserdata
 packrat/lib*/
 *.png
+ReadCount(Kallisto).csv
+*.h5
+*.tsv
+*.json
