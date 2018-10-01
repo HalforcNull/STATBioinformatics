@@ -183,7 +183,7 @@ for( i in 1:6) {
 p
 ```
 
-## 5.3 Cut low reading data (Not Normalized)
+## 5.3 Cut low reading data
 ```{r}
 cut.log.kallisto <- log.dat.kallisto[rowSums(log.dat.kallisto) > -5, ]
 cut.log.origin <- log.dat.origin[rowSums(log.dat.origin) > -5, ]
@@ -205,13 +205,6 @@ for( i in 1:6) {
 }
 p
 ```
-
-##
-
-
-
-
-
 
 
 
