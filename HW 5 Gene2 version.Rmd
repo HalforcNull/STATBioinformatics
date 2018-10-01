@@ -148,7 +148,74 @@ write.csv(txi.kallisto.tsv$counts, file="ReadCount(Kallisto).csv", row.names = T
 
 
 # 5. Compare read from kallisto vs. the .csv file we used
-
+## 5.0 Libraries
 ```{r}
-
+library("edgeR")
+library("plotly")
 ```
+
+## 5.1 Read two different data source 
+```{r}
+dat.kallisto <- read.csv('ReadCount(Kallisto).csv', row.names = 1)
+dat.origin <- read.csv('GSE37704.csv', row.names = 1)
+
+nrow(dat.kallisto)
+nrow(dat.origin)
+```
+
+## 5.2 Normalize and plot log distribution
+```{r}
+log.dat.kallisto <- cpm(dat.kallisto, log = TRUE )
+log.dat.origin <- cpm(dat.origin, log = TRUE )
+
+p <- plot_ly(type='scatter', mode='lines')
+for( i in 1:6) {
+  tmp.density <- density(log.dat.kallisto[,i])
+  p <- p %>% add_lines(x = tmp.density$x, y = tmp.density$y)
+}
+p
+
+p <- plot_ly(type='scatter', mode='lines')
+for( i in 1:6) {
+  tmp.density <- density(log.dat.origin[,i])
+  p <- p %>% add_lines(x = tmp.density$x, y = tmp.density$y)
+}
+p
+```
+
+## 5.3 Cut low reading data (Not Normalized)
+```{r}
+cut.log.kallisto <- log.dat.kallisto[rowSums(log.dat.kallisto) > -5, ]
+cut.log.origin <- log.dat.origin[rowSums(log.dat.origin) > -5, ]
+
+nrow(cut.log.kallisto)
+nrow(cut.log.origin)
+
+p <- plot_ly(type='scatter', mode='lines')
+for( i in 1:6) {
+  tmp.density <- density(cut.log.kallisto[,i])
+  p <- p %>% add_lines(x = tmp.density$x, y = tmp.density$y)
+}
+p
+
+p <- plot_ly(type='scatter', mode='lines')
+for( i in 1:6) {
+  tmp.density <- density(cut.log.origin[,i])
+  p <- p %>% add_lines(x = tmp.density$x, y = tmp.density$y)
+}
+p
+```
+
+##
+
+
+
+
+
+
+
+
+
+
+
+
