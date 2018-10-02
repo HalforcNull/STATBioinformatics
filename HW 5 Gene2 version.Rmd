@@ -117,6 +117,8 @@ nohup kallisto/kallisto quant -i hsGRCh38_kallisto -t 4 -o SRR493371 SRR493371_1
 
 
 # 4. Convert read into one table using R
+Kallisto gives us the transcript read count. 
+Now we need convert it into gene read count.
 
 ```{r eval=FALSE}
 library(EnsDb.Hsapiens.v86)
