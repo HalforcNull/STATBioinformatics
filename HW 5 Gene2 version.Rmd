@@ -208,6 +208,19 @@ for( i in 1:6) {
 p
 ```
 
+## 5.4 Kolmogorov-Smirnov Test
+
+
+```{r,  warning=FALSE}
+
+ks.test(cut.log.kallisto[,1], cut.log.origin[,1])
+ks.test(cut.log.kallisto[,2], cut.log.origin[,2])
+ks.test(cut.log.kallisto[,3], cut.log.origin[,3])
+ks.test(cut.log.kallisto[,4], cut.log.origin[,4])
+ks.test(cut.log.kallisto[,5], cut.log.origin[,5])
+ks.test(cut.log.kallisto[,6], cut.log.origin[,6])
+
+```
 
 
 
