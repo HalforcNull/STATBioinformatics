@@ -18,13 +18,24 @@ library(apeglm)
 library(vsn)
 library(pheatmap)
 library(RColorBrewer)
+library(gplots)
+library(limma)
+library(biomaRt)
+library(ALL)
+library(gage)
+library("org.Hs.eg.db")
+library(pathview)
+library(png)
+library(GO.db)
+library(GOstats)
+library("ggplot2")
 ```
 
 
 # 1. Load Data
 ```{r}
 data <- read.csv('GSE37704.csv')
-rownames(data) <- data[,1]
+rownames(data) <- gsub(" ","",data[,1])
 data <- data[,-1]
 
 colna <- colnames(data)
@@ -33,7 +44,7 @@ colnames(coldata) <- c('condition')
 rownames(coldata) <- colna
 ```
 
-# 2. Cut Data
+# 2. Cut Data ( Pre-filtering )
 by [pre-filtering section in DESeq2 Manual](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#pre-filtering)
 >Pre-filtering
 While it is not necessary to pre-filter low count genes before running the DESeq2 functions, there are two reasons which make pre-filtering useful: by removing rows in which there are very few reads, we reduce the memory size of the dds data object, and we increase the speed of the transformation and testing functions within DESeq2. Here we perform a minimal pre-filtering to keep only rows that have at least 10 reads total. Note that more strict filtering to increase power is automatically applied via independent filtering on the mean of normalized counts within the results function.
@@ -43,10 +54,11 @@ While it is not necessary to pre-filter low count genes before running the DESeq
 >dds <- dds[keep,]
 
 Here, we need at least 5 column has more than 1 cpm.
+
 ```{r}
 dds <- DESeqDataSetFromMatrix(countData = as.matrix(data), colData = coldata, design = ~ condition )
 dds <- DESeq(dds)
-dds <- dds[ rowSums( counts(dds) >= 1 ) >= 5 ]
+dds <- dds[ rowSums( counts(dds) >= 5 ) >= 1 ]
 ```
 
 # 3. Do log transform and vst transform
@@ -58,5 +70,329 @@ vsd <- vst(dds, blind = FALSE)
 
 ## 3.1 PCA
 ```{r}
-plotPCA(rlog.dds)
+plotPCA(rlog.dds)+ theme(aspect.ratio=1)
 ```
+
+## 3.2 Histgram
+
+### Cluster function and distance function
+```{r}
+hclust2 <- function(x, method="average", ...)
+  hclust(x, method=method, ...)
+
+dist2 <- function(x, ...)   
+  as.dist(1-cor(t(x), method="pearson"))
+```
+
+### Draw Histgram 
+Here I pick the top 100 Genes (order by variance)
+
+```{r, message = FALSE, fig.width=7, fig.height=7}
+n = 100
+hist.data <- assay(rlog.dds)
+hist.data <- hist.data[order(apply(hist.data,1,sd), decreasing=TRUE),]
+hist.data <- hist.data[1:n,]
+
+unlist.data <- unlist(hist.data)
+cutoff.up.lim <- median(unlist.data) + 4 * sd(unlist.data)
+cutoff.down.lim <- median(unlist.data) - 4 * sd(unlist.data)
+hist.data[hist.data > cutoff.up.lim] <- cutoff.up.lim
+hist.data[hist.data < cutoff.down.lim] <- cutoff.down.lim
+
+lmat = rbind(c(5,4),c(0,1),c(3,2))
+lwid = c(1.5,4)
+lhei = c(1,.2,4)
+
+heatmap.2(
+    hist.data, 
+    distfun = dist2,
+    hclustfun=hclust2,
+	col=greenred(75), density.info="none", trace="none", scale="none", keysize=.5
+	,key=T, symkey=F
+	,ColSideColors=c('red','red','red', 'green', 'green', 'green')
+	,margins=c(8,8)
+	,cexRow=1
+	,srtCol=45
+	,cexCol=1
+	,lmat = lmat, lwid = lwid, lhei = lhei
+	)
+```
+
+# 4. DESeq2
+
+## 4.1 Run Deseq2 again 
+We did pre-filtering in section 2. It is better to run Deseq anagin.
+
+```{r, message = FALSE}
+dds <- DESeq(dds)
+```
+
+## 4.2 Cut result by FDR = 0.05 and abs(lfc) > 1
+
+```{r, message = FALSE}
+res <- results(dds, alpha=0.05, lfcThreshold=1)
+#res05inc <- results(dds, alpha=0.05, lfcThreshold=1, altHypothesis="greater")
+#res05decs <- results(dds, alpha=0.05, lfcThreshold=1, altHypothesis="less")
+
+res <- res[order(abs( res$log2FoldChange), decreasing=TRUE),]
+#res05inc <- res05inc[order(abs( res05inc$log2FoldChange), decreasing=TRUE),]
+#res05decs <- res05decs[order(abs( res05decs$log2FoldChange), decreasing=TRUE),]
+
+colnames(res)
+summary(res)
+#summary(res05inc)
+#summary(res05decs)
+```
+
+# 5. Using GOStat package to do enrichment tests
+
+## 5.1 Map Ids
+
+```{r, message = FALSE}
+res$symbol = gsub(" ","",row.names(res)) 
+res$entrez = mapIds(org.Hs.eg.db,
+                     keys=row.names(res), 
+                     column="ENTREZID",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+res$goids = mapIds(org.Hs.eg.db,
+                     keys=row.names(res), 
+                     column="GO",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+res$name =   mapIds(org.Hs.eg.db,
+                     keys=row.names(res), 
+                     column="GENENAME",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+head(res)
+```
+
+
+## 5.2 Get Up, Down and Universal Ids
+
+** deseq2::results ** function is not able to 'filtering' genes.
+To filter genes, we need following code.
+
+```{r}
+up.idx <- which(res$padj<0.05 & res$log2FoldChange > 1)
+up.entrez.id <- unique(res[up.idx, 'entrez'])
+
+down.idx <- which(res$padj<0.05 & res$log2FoldChange < -1)
+down.entrez.id <- unique(res[down.idx, 'entrez'])
+
+length(up.idx)
+length(down.idx)
+universeGenes <-  unique(res$entrez)
+```
+Compare result get from Section 5.1 with the length of up.idx and down.idx shows, we can see our filtering is correct.
+
+## 5.3 Up gene GO analysis
+
+### BP
+```{r}
+params <- new("GOHyperGParams",
+     geneIds=up.entrez.id,
+     universeGeneIds=universeGenes,
+     annotation="org.Hs.eg.db",
+     ontology="BP",
+     pvalueCutoff=0.001,
+     conditional=FALSE,
+     testDirection="over")
+
+hgOver <- hyperGTest(params)
+summary(hgOver)[1:10,c("GOBPID","Pvalue","Term")]
+```
+
+### CC
+```{r}
+params <- new("GOHyperGParams",
+     geneIds=up.entrez.id,
+     universeGeneIds=universeGenes,
+     annotation="org.Hs.eg.db",
+     ontology="CC",
+     pvalueCutoff=0.001,
+     conditional=FALSE,
+     testDirection="over")
+
+hgOver <- hyperGTest(params)
+summary(hgOver)[1:10,c("GOCCID","Pvalue","Term")]
+```
+
+### MF
+```{r}
+params <- new("GOHyperGParams",
+     geneIds=up.entrez.id,
+     universeGeneIds=universeGenes,
+     annotation="org.Hs.eg.db",
+     ontology="MF",
+     pvalueCutoff=0.001,
+     conditional=FALSE,
+     testDirection="over")
+
+hgOver <- hyperGTest(params)
+summary(hgOver)[1:10,c("GOMFID","Pvalue","Term")]
+```
+
+## 5.4 Down gene GO analysis
+
+### BP
+```{r}
+params <- new("GOHyperGParams",
+     geneIds=down.entrez.id,
+     universeGeneIds=universeGenes,
+     annotation="org.Hs.eg.db",
+     ontology="BP",
+     pvalueCutoff=0.001,
+     conditional=FALSE,
+     testDirection="over")
+
+hgOver <- hyperGTest(params)
+summary(hgOver)[1:10,c("GOBPID","Pvalue","Term")]
+```
+
+### CC
+```{r}
+params <- new("GOHyperGParams",
+     geneIds=down.entrez.id,
+     universeGeneIds=universeGenes,
+     annotation="org.Hs.eg.db",
+     ontology="CC",
+     pvalueCutoff=0.001,
+     conditional=FALSE,
+     testDirection="over")
+
+hgOver <- hyperGTest(params)
+summary(hgOver)[1:10,c("GOCCID","Pvalue","Term")]
+```
+
+### MF
+```{r}
+params <- new("GOHyperGParams",
+     geneIds=down.entrez.id,
+     universeGeneIds=universeGenes,
+     annotation="org.Hs.eg.db",
+     ontology="MF",
+     pvalueCutoff=0.001,
+     conditional=FALSE,
+     testDirection="over")
+
+hgOver <- hyperGTest(params)
+summary(hgOver)[1:10,c("GOMFID","Pvalue","Term")]
+```
+
+
+
+# 6. Pathway: Gage
+
+
+
+## 6.1 Gage anaylsis using kegg
+
+```{r}
+library(gageData)
+resLFC = res$log2FoldChange
+names(resLFC) = res$entrez
+data(kegg.sets.hs)
+data(sigmet.idx.hs)
+kegg.sets.hs = kegg.sets.hs[sigmet.idx.hs]
+
+kres = gage(resLFC, gsets=kegg.sets.hs, same.dir=TRUE)
+lapply(kres, head)
+
+k_pathways_Up = data.frame(id=rownames(kres$greater), kres$greater) %>% 
+  tbl_df() %>% 
+  filter(row_number()<=5) %>% 
+  .$id %>% 
+  as.character()
+
+k_pathways_Down = data.frame(id=rownames(kres$less), kres$less) %>% 
+  tbl_df() %>% 
+  filter(row_number()<=5) %>% 
+  .$id %>% 
+  as.character()
+
+k_Up_ids = unique(substr(k_pathways_Up, start=1, stop=8))
+k_Down_ids = unique(substr(k_pathways_Down, start=1, stop=8))
+
+```
+
+
+### Up regulated pathways
+
+```{r, message = FALSE, warning=FALSE}
+pathview(gene.data=resLFC, pathway.id=k_Up_ids, species="hsa", kegg.dir = "PathviewResult/Up/", new.signature=FALSE)
+# for(f in k_Up_ids){
+#   f <- paste0(f,'.pathview.png')
+#   knitr::include_graphics(f)
+# }
+# 
+# knitr::include_graphics(f)
+```
+
+![Hematopoietic cell lineage](.\hsa04640.pathview.png)
+![Lysosome](.\hsa04142.pathview.png)
+![Steroid hormone biosynthesis](.\hsa00140.pathview.png)
+![Jak-STAT signaling pathway](.\hsa04630.pathview.png)
+![Chemokine signaling pathway](.\hsa04062.pathview.png)
+
+
+### Down regulated pathways
+
+```{r, message = FALSE, , warning=FALSE}
+pathview(gene.data=resLFC, pathway.id=k_Down_ids, species="hsa", kegg.dir = "PathviewResult/Down/", new.signature=FALSE)
+# for(f in k_Down_ids){
+#   f <- paste0(f,'.pathview.png')
+#   knitr::include_graphics(f)
+# }
+# 
+# knitr::include_graphics(f)
+
+```
+![Cell cycle](.\hsa04110.pathview.png)
+![DNA replication](.\hsa03030.pathview.png)
+![Oocyte meiosis](.\hsa04114.pathview.png)
+![Homologous recombination](.\hsa03440.pathview.png)
+![RNA transport](.\hsa03013.pathview.png)
+
+## 6.2 Gage anaylsis using GO
+```{r}
+data(go.sets.hs)
+data(go.subs.hs)
+resLFC = res$log2FoldChange
+
+gobpsets = go.sets.hs[go.subs.hs$BP]
+goccsets = go.sets.hs[go.subs.hs$CC]
+gomfsets = go.sets.hs[go.subs.hs$MF]
+
+GoLFC <- resLFC
+names(GoLFC) <- res$entrez
+head(GoLFC)
+
+gobpres <- gage(GoLFC, gsets=gobpsets, same.dir=TRUE)
+goccres <- gage(GoLFC, gsets=goccsets, same.dir=TRUE)
+gomfres <- gage(GoLFC, gsets=gomfsets, same.dir=TRUE)
+
+```
+
+### bp result
+
+```{r}
+
+lapply(gobpres, head)
+```
+
+### cc result
+```{r}
+lapply(goccres, head)
+```
+
+### mf result
+
+```{r}
+lapply(gomfres, head)
+```
+
+
+
+
