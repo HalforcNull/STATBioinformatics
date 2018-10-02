@@ -84,7 +84,8 @@ fastqc -q SRR493371_2.fastq.gz &
 
 ## 4.1 Download cdna data and ncrna data
 
-Since we are discussing human cancer, we are download cdna and ncrna of homo sapiens. 
+Since we are discussing human cancer, we are download cdna and ncrna of homo sapiens.
+
 After download, we combine them into one data file.
 ```{bash eval=FALSE}
 wget ftp://ftp.ensembl.org/pub/current_fasta/homo_sapiens/cdna/Homo_sapiens.GRCh38.cdna.all.fa.gz

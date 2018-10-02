@@ -190,7 +190,8 @@ fastqc -q SRR493371_2.fastq.gz &amp;</code></pre>
 <h1>4. Kallisto</h1>
 <div id="download-cdna-data-and-ncrna-data" class="section level2">
 <h2>4.1 Download cdna data and ncrna data</h2>
-<p>Since we are discussing human cancer, we are download cdna and ncrna of homo sapiens. After download, we combine them into one data file.</p>
+<p>Since we are discussing human cancer, we are download cdna and ncrna of homo sapiens.</p>
+<p>After download, we combine them into one data file.</p>
 <pre class="bash"><code>wget ftp://ftp.ensembl.org/pub/current_fasta/homo_sapiens/cdna/Homo_sapiens.GRCh38.cdna.all.fa.gz
 wget ftp://ftp.ensembl.org/pub/current_fasta/homo_sapiens/ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz
 cat Homo_sapiens.GRCh38.cdna.all.fa.gz Homo_sapiens.GRCh38.ncrna.fa.gz &gt; Homo_sapiens.GRCh38.rna.fa.gz</code></pre>
