@@ -1,0 +1,113 @@
+IMSA+A metataxonomics report
+
+SUMMARY
+6         Total unique lowest taxa identified
+6         Total unique Species identified
+6         Total unique Genera identified
+8         Total unique Families identified
+
+CONTENT
+Section A - List of identified lowest taxon (for Virus detection)
+Section B - List of identified species
+Section C - List of identified genera (recommended)
+Section D - List of identified families
+Section E - Errors from analysis requiring human intervention
+Section F - List of output files and their brief description
+
+Section A
+
+Taxon at the lowest clade associated with the reference sequence.
+This report is most useful for detecting viruses, which can be omitted in other reports.
+Taxa ID        	Scientific Name                    	IMSA+A count   	Kingdom        
+
+5147           	Sordaria macrospora                	1              	Fungi          
+4896           	Schizosaccharomyces pombe          	1              	Fungi          
+203908         	Melampsora larici-populina         	1              	Fungi          
+1215088        	Pseudomonas putida HB3267          	1              	Bacteria       
+109871         	Batrachochytrium dendrobatidis     	1              	Fungi          
+none           	not found in DB                    	1              	root           
+
+Section B
+
+List of identified species.
+
+Species ID     	Scientific Name                    	IMSA+A count   	Kingdom        
+
+5147           	Sordaria macrospora                	1              	Fungi          
+4896           	Schizosaccharomyces pombe          	1              	Fungi          
+303            	Pseudomonas putida                 	1              	Bacteria       
+203908         	Melampsora larici-populina         	1              	Fungi          
+109871         	Batrachochytrium dendrobatidis     	1              	Fungi          
+none           	not found in DB                    	1              	root           
+
+Section C
+
+List of identified genera.
+
+Genus ID       	Scientific Name                    	IMSA+A count   	Kingdom        
+
+5260           	Melampsora                         	1              	Fungi          
+5146           	Sordaria                           	1              	Fungi          
+4895           	Schizosaccharomyces                	1              	Fungi          
+286            	Pseudomonas                        	1              	Bacteria       
+100474         	Batrachochytrium                   	1              	Fungi          
+none           	not found in DB                    	1              	root           
+
+Section D
+
+List of identified families.
+This report can be useful when the sequenced organism(s) in the sample is not in the reference database.
+Reviewing results at higher clade levels may prevent the identification of many closely related organisms.
+
+Family ID      	Scientific Name                    	IMSA+A count   	Kingdom        
+
+none           	not found in DB                    	2              	root           
+5259           	Melampsoraceae                     	1              	Fungi          
+5148           	Sordariaceae                       	1              	Fungi          
+4894           	Schizosaccharomycetaceae           	1              	Fungi          
+4893           	Saccharomycetaceae                 	1              	Fungi          
+41297          	Sphingomonadaceae                  	1              	Bacteria       
+135621         	Pseudomonadaceae                   	1              	Bacteria       
+119045         	Methylobacteriaceae                	1              	Bacteria       
+
+Section E
+
+Errors from analysis requiring human intervention
+
+Sequence alignment conversion to taxa:
+WARNING!
+There were reference sequences which could not be converted to taxa.
+
+SRR1027171_trinity_cnt.tax_unidentifiedTaxaAlignments.txt file contains blast alignments to reference sequence names.
+
+These names must be manually looked up, input into appropriate files, and then the program re-run.
+Please refer to documentation for detailed instructions to resolve this error, section 'Additional Output file'.
+
+Reference sequence names conversion to taxa:
+WARNING!
+There were reference sequence GI numbers which could not be converted to taxa.
+
+SRR1027171_trinity_cnt.tax_unresolved_gi.txt contains a list of GI numbers.
+
+These need to be manually looked up, input, and then process re-run
+Please refer to documentation for detailed instructions to resolve this error, section 'Additional Output file'.
+
+Section F
+
+
+List of output files and their brief description:
+	SRR1027171_trinity_cnt.tax_species.IMSA_count.txt - Original IMSA report
+	SRR1027171_trinity_cnt.tax_genus.IMSA_count.txt   - Original IMSA report
+	SRR1027171_trinity_cnt.tax_family.IMSA_count.txt  - Original IMSA report
+	SRR1027171_trinity_cnt.tax_firstTaxon.IMSA+A_4count.txt - IMSA+A detailed counts; use for further analysis
+	SRR1027171_trinity_cnt.tax_species.IMSA+A_4count.txt    - IMSA+A detailed counts; use for further analysis
+	SRR1027171_trinity_cnt.tax_genus.IMSA+A_4count.txt      - IMSA+A detailed counts; use for further analysis
+	SRR1027171_trinity_cnt.tax_family.IMSA+A_4count.txt     - IMSA+A detailed counts; use for further analysis
+	SRR1027171_trinity_cnt.tax_NAMES.txt         - list of taxonomies with names looked up via NCBI
+	SRR1027171_trinity_cnt.tax_GIS.txt           - list of GI numbers (or other sequence names) found
+	SRR1027171_trinity_cnt.tax_uniqueAlignments.txt           - query names resulting in unique hits across all clades and corresponding Taxon ID
+	SRR1027171_trinity_cnt.tax_unidentifiedTaxaAlignments.txt - serious errors where reference sequence could not be converted to a taxon ID recorded here
+	SRR1027171_trinity_cnt.tax_unresolved_gi.txt              - serious errors where reference sequence could not be converted to a taxon ID recorded here
+	SRR1027171_trinity_cnt.taxonomy.pickle       - intermediate python binary file.  Delete if your blast alignments change.
+	SRR1027171_trinity_cnt.bestHits.bln          - intermediate blast alignments, which are used for final counts.  Delete if your blast alignments change.
+	SRR1027171_trinity_cnt.bestHits.bln.pickle   - intermediate python binary file.  Delete if your blast alignments change.
